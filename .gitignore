@@ -1,0 +1,46 @@
+# Python
+*.py[cod]
+__pycache__/
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+bin/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+venv/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.coverage
+.tox/
+.pytest_cache/
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# Model files
+*.pkl
+*.h5
+*.pt
+*.pth
+*.onnx
+*.pb
+trained_models/

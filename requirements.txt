@@ -1,0 +1,12 @@
+Flask==3.0.0
+Flask-RESTful==0.3.10
+Flask-CORS==4.0.0
+python-dotenv==1.0.0
+requests==2.31.0
+transformers==4.36.0
+Pillow==10.1.0
+huggingface-hub==0.19.4
+pytest==7.4.3
+black==23.11.0
+flake8==6.1.0
+python-dotenv==1.0.0
