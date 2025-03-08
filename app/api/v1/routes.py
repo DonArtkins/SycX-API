@@ -12,8 +12,7 @@ class HealthCheck(Resource):
     @rate_limit
     def get(self):
         """Health check endpoint."""
-        # Use FLASK_ENV from config instead of ENV
-        environment = current_app.config.get('FLASK_ENV', 'production')
+        environment = current_app.config['FLASK_ENV']
         return {
             'status': 'healthy',
             'version': current_app.config['API_VERSION'],

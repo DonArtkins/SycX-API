@@ -9,10 +9,14 @@ from openpyxl import load_workbook
 from pptx import Presentation
 import json
 import io
+from flask import current_app
 
 class FileProcessor:
     def __init__(self):
-        # Initialize the summarization model
+        # Initialize the summarization model with configuration from app config
+        os.environ['MALLOC_TRIM_THRESHOLD_'] = str(current_app.config['MALLOC_TRIM_THRESHOLD'])
+        os.environ['PYTORCH_CUDA_ALLOC_CONF'] = current_app.config['PYTORCH_CUDA_ALLOC_CONF']
+        
         self.summarizer = pipeline(
             "summarization",
             model="facebook/bart-large-cnn",
