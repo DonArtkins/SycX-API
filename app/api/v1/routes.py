@@ -17,24 +17,29 @@ class HealthCheck(Resource):
             'environment': environment
         }, 200
 
-class HelloWorld(Resource):
+class Summarize(Resource):
     @rate_limit
     def get(self):
-        """Example endpoint."""
-        return {
-            'message': 'Hello, World!',
-            'timestamp': datetime.utcnow().isoformat()
-        }, 200
-
+        return {"message": "Testing Summarize endpoint"}, 200
+    
     @rate_limit
     def post(self):
-        """Example POST endpoint."""
         data = request.get_json()
-        return {
-            'message': f"Received: {data}",
-            'timestamp': datetime.utcnow().isoformat()
-        }, 201
+        # Process your data here
+        return {"result": "Testing Summarize endpoint complete"}, 201
+
+class Feedback(Resource):
+    @rate_limit
+    def get(self):
+        return {"message": "Testing Feedback endpoint"}, 200
+    
+    @rate_limit
+    def post(self):
+        data = request.get_json()
+        # Process your data here
+        return {"result": "Testing Feedback endpoint complete"}, 201
 
 # Register routes
 api.add_resource(HealthCheck, '/health')
-api.add_resource(HelloWorld, '/hello')
+api.add_resource(Summarize, '/summarize')
+api.add_resource(Feedback, '/feedback')
