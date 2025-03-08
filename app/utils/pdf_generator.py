@@ -9,16 +9,7 @@ from PIL import Image as PILImage
 from io import BytesIO
 import cloudinary
 import cloudinary.uploader
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Configure Cloudinary
-cloudinary.config(
-    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
-    api_key=os.getenv('CLOUDINARY_API_KEY'),
-    api_secret=os.getenv('CLOUDINARY_API_SECRET')
-)
+from flask import current_app
 
 class PDFGenerator:
     def __init__(self):
@@ -30,12 +21,21 @@ class PDFGenerator:
             fontSize=12,
             spaceAfter=20
         )
+        
+        # Configure Cloudinary using app config
+        cloudinary.config(
+            cloud_name=current_app.config['CLOUDINARY_CLOUD_NAME'],
+            api_key=current_app.config['CLOUDINARY_API_KEY'],
+            api_secret=current_app.config['CLOUDINARY_API_SECRET']
+        )
 
     def _get_unsplash_image(self, query):
         """Fetch relevant image from Unsplash"""
         try:
             url = f"https://api.unsplash.com/photos/random"
-            headers = {"Authorization": f"Client-ID {os.getenv('UNSPLASH_ACCESS_KEY')}"}
+            headers = {
+                "Authorization": f"Client-ID {current_app.config['UNSPLASH_ACCESS_KEY']}"
+            }
             params = {"query": query, "orientation": "landscape"}
             response = requests.get(url, headers=headers, params=params)
             data = response.json()
@@ -108,7 +108,7 @@ class PDFGenerator:
             response = cloudinary.uploader.upload(
                 output_path,
                 resource_type="raw",
-                folder="summaries",
+                folder="SycX Files",
                 use_filename=True
             )
             return response['secure_url']
