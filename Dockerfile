@@ -14,8 +14,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download NLTK 'punkt' resource
-RUN python -m nltk.downloader punkt
+# Download NLTK resources
+RUN python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
 
 # Copy application code
 COPY . .
@@ -34,4 +34,4 @@ CMD gunicorn \
     --threads $GUNICORN_THREADS \
     --timeout 120 \
     --bind 0.0.0.0:$PORT \
-    app:app
+    run:app
