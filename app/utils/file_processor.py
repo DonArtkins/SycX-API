@@ -1,75 +1,50 @@
 import os
-from transformers import pipeline
-import torch
-from PIL import Image
-import pytesseract
-from pdfminer.high_level import extract_text as extract_pdf_text
-from docx import Document 
-from openpyxl import load_workbook
-from pptx import Presentation
-import io
-import nltk
-from flask import current_app
+import base64
 import logging
+import nltk
+import google.generativeai as genai
+from flask import current_app
+from PIL import Image
+
+nltk.download('punkt', quiet=True)
 
 class FileProcessor:
     def __init__(self):
-        # Initialize the summarization model with configuration from app config
-        os.environ['MALLOC_TRIM_THRESHOLD_'] = str(current_app.config['MALLOC_TRIM_THRESHOLD'])
-        os.environ['PYTORCH_CUDA_ALLOC_CONF'] = current_app.config['PYTORCH_CUDA_ALLOC_CONF']
-        
-        # Direct file upload to HuggingFace
-        self.summarizer = pipeline(
-            "summarization",
-            model="facebook/bart-large-cnn",
-            device=-1 # Use CPU to ensure stability
-        )
+        google_key = current_app.config.get('GOOGLE_API_KEY', '').strip()
+        if not google_key:
+            logging.error("Google API key is missing or empty")
+            raise ValueError("Google API key not configured")
 
-        nltk.download('punkt', quiet=True)
+        try:
+            genai.configure(api_key=google_key)
+            logging.info("Google Gemini API configured successfully")
+        except Exception as e:
+            logging.error(f"Error configuring Gemini: {str(e)}")
+            raise
 
     def _optimize_length_params(self, text_length, summary_depth):
-        """Calculate optimal length parameters based on summary depth"""
-        # Add more granular depth configs
         depth_configs = {
-            0.0: {'max_ratio': 0.05, 'min_ratio': 0.02, 'title_length': 2},  # Very concise
-            1.0: {'max_ratio': 0.15, 'min_ratio': 0.05, 'title_length': 3},  # Concise
-            2.0: {'max_ratio': 0.30, 'min_ratio': 0.10, 'title_length': 4},  # Balanced
-            3.0: {'max_ratio': 0.40, 'min_ratio': 0.20, 'title_length': 5},  # Detailed  
-            4.0: {'max_ratio': 0.60, 'min_ratio': 0.30, 'title_length': 6}   # Very detailed
+            0.0: {'max_ratio': 0.05, 'min_ratio': 0.02, 'title_length': 2},
+            1.0: {'max_ratio': 0.15, 'min_ratio': 0.05, 'title_length': 3},
+            2.0: {'max_ratio': 0.30, 'min_ratio': 0.10, 'title_length': 4},
+            3.0: {'max_ratio': 0.40, 'min_ratio': 0.20, 'title_length': 5},
+            4.0: {'max_ratio': 0.60, 'min_ratio': 0.30, 'title_length': 6}
         }
-        
-        # Get closest depth configuration
         depths = list(depth_configs.keys())
         closest_depth = min(depths, key=lambda x: abs(x - float(summary_depth)))
-        config = depth_configs[closest_depth]
-        
-        return config
+        return depth_configs[closest_depth]
 
     def process_file(self, file_content, file_type, summary_depth=2.0):
-        """Process file and return summary with format suggestions"""
         try:
-            # Let HuggingFace handle the text extraction by treating file as raw input
-            text = self._extract_text(file_content, file_type)
+            config = self._optimize_length_params(1000, summary_depth)
             
-            # Get configuration based on summary depth
-            config = self._optimize_length_params(len(text.split()), summary_depth)
+            logging.info("Starting summarization with Gemini Flash 2.0")
+            summary = self._gemini_summarization(file_content, file_type, summary_depth)
+            
+            if not summary:
+                return None
 
-            # Generate summary with error catching
-            try:
-                summary = self.summarizer(
-                    text,
-                    max_length=int(len(text.split()) * config['max_ratio']),
-                    min_length=int(len(text.split()) * config['min_ratio']),
-                    do_sample=False
-                )[0]['summary_text']
-            except Exception as e:
-                logging.error(f"Summarization error: {str(e)}")
-                summary = text[:int(len(text) * config['max_ratio'])]  # Fallback to truncation
-
-            # Generate title suggestion based on summary
             suggested_title = self._generate_title(summary, config['title_length'])
-
-            # Analyze content to suggest display format
             display_format = self._suggest_display_format(summary)
 
             return {
@@ -82,59 +57,72 @@ class FileProcessor:
             logging.error(f"File processing error: {str(e)}")
             raise
 
-    def _extract_text(self, file_content, file_type):
-        """Extract text while preserving original file structure"""
+    def _gemini_summarization(self, file_content, file_type, summary_depth):
         try:
-            if file_type in ['pdf']:
-                return extract_pdf_text(io.BytesIO(file_content))
-            elif file_type in ['docx', 'doc']:
-                doc = Document(io.BytesIO(file_content))
-                return '\n'.join([p.text for p in doc.paragraphs])
-            elif file_type in ['xlsx', 'xls']: 
-                wb = load_workbook(io.BytesIO(file_content))
-                text = []
-                for sheet in wb.active:
-                    for row in sheet.iter_rows(values_only=True):
-                        text.append(' | '.join([str(cell) for cell in row if cell]))
-                return '\n'.join(text)
-            elif file_type in ['pptx', 'ppt']:
-                prs = Presentation(io.BytesIO(file_content))
-                text = []
-                for slide in prs.slides:
-                    for shape in slide.shapes:
-                        if hasattr(shape, "text"):
-                            text.append(shape.text)
-                return '\n'.join(text)
-            elif file_type in ['png', 'jpg', 'jpeg']:
-                image = Image.open(io.BytesIO(file_content))
-                return pytesseract.image_to_string(image)
+            base64_content = base64.b64encode(file_content).decode('utf-8')
+            mime_mapping = {
+                'pdf': 'application/pdf',
+                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'doc': 'application/msword',
+                'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'xls': 'application/vnd.ms-excel',
+                'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'ppt': 'application/vnd.ms-powerpoint',
+                'txt': 'text/plain',
+                'md': 'text/markdown',
+                'png': 'image/png',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg'
+            }
+
+            mime_type = mime_mapping.get(file_type, 'application/octet-stream')
+            model = genai.GenerativeModel('gemini-2.0-flash')
+
+            depth_prompts = {
+                0.0: "Generate an extremely concise summary in 1-2 sentences.",
+                1.0: "Create a brief summary with key points only.",
+                2.0: "Produce a balanced summary covering main points.",
+                3.0: "Develop a detailed summary of important content.",
+                4.0: "Create comprehensive summary covering nearly all content."
+            }
+
+            closest_depth = min([0.0, 1.0, 2.0, 3.0, 4.0], key=lambda x: abs(x - summary_depth))
+            prompt = f"{depth_prompts[closest_depth]} Analyze this {file_type.upper()} file:"
+
+            if file_type in ['txt', 'md']:
+                try:
+                    text_content = file_content.decode('utf-8')
+                    response = model.generate_content([prompt, text_content])
+                except UnicodeDecodeError:
+                    response = model.generate_content([prompt, {'mime_type': mime_type, 'data': base64_content}])
             else:
-                return file_content.decode('utf-8')
+                response = model.generate_content([prompt, {'mime_type': mime_type, 'data': base64_content}])
+
+            return response.text
+
         except Exception as e:
-            logging.error(f"Text extraction error: {str(e)}")
-            return ""
+            logging.error(f"Gemini API error: {str(e)}")
+            raise
 
     def _generate_title(self, text, max_words=4):
-        """Generate a title from the summary text"""
         sentences = nltk.sent_tokenize(text)
         if not sentences:
             return "Document Summary"
-            
+
         first_sentence = sentences[0]
         words = first_sentence.split()
-        
+
         if len(words) <= max_words:
             title = ' '.join(words)
         else:
             title = ' '.join(words[:max_words])
-            
+
         return title.strip().title()
 
     def _suggest_display_format(self, text):
-        """Analyze text and suggest display format with visual elements"""
         sentences = nltk.sent_tokenize(text)
         words_per_sentence = len(text.split()) / len(sentences) if sentences else 0
-        
+
         if words_per_sentence < 10:
             return {
                 'type': 'bullet_points',
@@ -176,16 +164,15 @@ class FileProcessor:
             }
 
     def _extract_sections(self, text):
-        """Extract sections from text with improved logic"""
         sentences = nltk.sent_tokenize(text)
         sections = []
         current_section = {'title': 'Overview', 'content': []}
-        
+
         for sentence in sentences:
             lower_sentence = sentence.lower()
             is_new_section = any(marker in lower_sentence for marker in 
                                ['first', 'second', 'third', 'finally', 'next', 'moreover', 'furthermore'])
-            
+
             if is_new_section:
                 if current_section['content']:
                     sections.append({
@@ -198,11 +185,11 @@ class FileProcessor:
                 }
             else:
                 current_section['content'].append(sentence)
-                
+
         if current_section['content']:
             sections.append({
                 'title': current_section['title'], 
                 'content': ' '.join(current_section['content'])
             })
-            
+
         return sections

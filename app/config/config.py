@@ -29,13 +29,15 @@ class Config:
     MALLOC_TRIM_THRESHOLD = int(os.getenv('MALLOC_TRIM_THRESHOLD_', 100000))
 
     # API Keys and Services
-    HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
-    UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY')
+    HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY', '').strip()
+    UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY', '').strip()
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '').strip()
+    GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '').strip()
     
     # Cloudinary Configuration
-    CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME')
-    CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY')
-    CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET')
+    CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME', '').strip()
+    CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY', '').strip()
+    CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET', '').strip()
     
     # Common Configuration
     TESTING = False

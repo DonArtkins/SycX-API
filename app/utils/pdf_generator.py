@@ -13,6 +13,7 @@ import cloudinary
 import cloudinary.uploader
 from flask import current_app
 import logging
+import uuid
 
 class PDFGenerator:
     def __init__(self):
@@ -81,7 +82,11 @@ class PDFGenerator:
     def create_pdf(self, summary_content, display_format, title):
         """Create PDF with enhanced formatting"""
         try:
-            output_path = f"/tmp/{title.replace(' ', '_')}.pdf"
+            # Generate a unique filename to prevent collisions
+            unique_id = str(uuid.uuid4())[:8]
+            safe_title = title.replace(' ', '_').replace('/', '_').replace('\\', '_')
+            output_path = f"/tmp/{safe_title}_{unique_id}.pdf"
+            
             doc = SimpleDocTemplate(output_path, pagesize=letter)
             story = []
 
@@ -142,20 +147,51 @@ class PDFGenerator:
             # Build PDF
             doc.build(story)
 
-            # Upload to Cloudinary
+            # Upload to Cloudinary with error handling and retry
             try:
-                response = cloudinary.uploader.upload(
-                    output_path,
-                    folder="SycX Files",
-                    public_id=title.replace(' ', '_'),
-                    resource_type="raw",
-                    overwrite=True
-                )
-                return response['secure_url']
+                # First attempt
+                response = self._upload_to_cloudinary(output_path, safe_title, unique_id)
+                if response:
+                    return response['secure_url']
+                
+                # Retry with different parameters if first attempt failed
+                logging.warning("First Cloudinary upload attempt failed. Retrying with modified parameters...")
+                response = self._upload_to_cloudinary(output_path, f"summary_{unique_id}", unique_id, retry=True)
+                if response:
+                    return response['secure_url']
+                    
+                return None
             except Exception as e:
                 logging.error(f"Cloudinary upload error: {e}")
                 return None
 
         except Exception as e:
             logging.error(f"PDF generation error: {e}")
+            return None
+            
+    def _upload_to_cloudinary(self, file_path, title, unique_id, retry=False):
+        """Upload to Cloudinary with additional options on retry"""
+        try:
+            options = {
+                "folder": "SycX Files",
+                "public_id": f"{title}_{unique_id}",
+                "resource_type": "raw",
+                "overwrite": True
+            }
+            
+            # If this is a retry, add additional parameters
+            if retry:
+                options["type"] = "private"
+                options["access_mode"] = "authenticated"
+                
+            response = cloudinary.uploader.upload(file_path, **options)
+            
+            # Verify the response has expected fields
+            if 'secure_url' not in response:
+                logging.error(f"Unexpected Cloudinary response: {response}")
+                return None
+                
+            return response
+        except Exception as e:
+            logging.error(f"Cloudinary upload error in attempt {'retry' if retry else 'initial'}: {str(e)}")
             return None
