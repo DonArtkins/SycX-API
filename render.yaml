@@ -3,6 +3,11 @@ services:
     name: sycx
     plan: free
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
     startCommand: gunicorn run:app --bind=0.0.0.0:$PORT
     memory: 1024
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 10000
