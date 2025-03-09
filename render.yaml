@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: sycx
+    plan: free
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:run --bind=0.0.0.0:$PORT
+    memory: 1024

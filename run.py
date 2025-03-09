@@ -15,7 +15,7 @@ app = create_app(config[env])
 if __name__ == '__main__':
     # Configuration is now loaded from app.config instead of direct env vars
     app.run(
-        host=app.config['HOST'],
+        host='0.0.0.0',
         port=app.config['PORT'],
         debug=app.config['DEBUG']
     )
