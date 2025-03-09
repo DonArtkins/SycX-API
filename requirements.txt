@@ -30,3 +30,6 @@ spacy
 cloudinary
 flask-restful
 flask-cors
+openai
+google-generativeai
+uuid
