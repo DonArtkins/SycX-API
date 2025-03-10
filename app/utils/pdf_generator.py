@@ -202,7 +202,9 @@ class PDFGenerator:
                 "public_id": f"{title}_{unique_id}",
                 "resource_type": "auto",
                 "overwrite": True,
-                "context": {"author": "SycX AI"}  # Add author in context
+                "type": "upload",  # Explicitly set type
+                "access_mode": "public",  # Ensure public access
+                "context": {"author": "SycX AI"}
             }
 
             # Remove problematic retry parameters
