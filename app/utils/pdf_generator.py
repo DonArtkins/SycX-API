@@ -15,6 +15,8 @@ from flask import current_app
 import logging
 import uuid
 import datetime
+import time
+import hashlib
 
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfdoc
@@ -194,27 +196,61 @@ class PDFGenerator:
             logging.error(f"PDF generation error: {e}")
             return None
 
-    # In pdf_generator.py, modify the _upload_to_cloudinary method:
     def _upload_to_cloudinary(self, file_path, title, unique_id, retry=False):
         try:
+            # Generate Cloudinary signature
+            timestamp = str(int(time.time()))
+            public_id = f"SycX Files/{title}_{unique_id}"
+            
+            # Create signature payload
+            signature_str = f"public_id={public_id}×tamp={timestamp}{current_app.config['CLOUDINARY_API_SECRET']}"
+            signature = hashlib.sha1(signature_str.encode('utf-8')).hexdigest()
+
             options = {
                 "folder": "SycX Files",
-                "public_id": f"{title}_{unique_id}",
+                "public_id": public_id,
                 "resource_type": "auto",
                 "overwrite": True,
-                "type": "upload",  # Explicitly set type
-                "access_mode": "public",  # Ensure public access
-                "context": {"author": "SycX AI"}
+                "type": "upload",
+                "access_mode": "authenticated",  # Private access
+                "context": {"author": "SycX AI"},
+                "timestamp": timestamp,
+                "signature": signature,
+                "api_key": current_app.config['CLOUDINARY_API_KEY']
             }
 
-            # Remove problematic retry parameters
             response = cloudinary.uploader.upload(file_path, **options)
-
+            
             if 'secure_url' not in response:
                 logging.error(f"Cloudinary response: {response}")
                 return None
 
+            # Generate signed URL
+            signed_url = self._generate_signed_url(response['public_id'], response['resource_type'])
+            response['signed_url'] = signed_url
+            
             return response
+
         except Exception as e:
             logging.error(f"Cloudinary upload error: {str(e)}")
+            return None
+
+    # Add new method to generate signed URLs
+    def _generate_signed_url(self, public_id, resource_type):
+        try:
+            # Generate signature
+            signature_str = f"public_id={public_id}{current_app.config['CLOUDINARY_API_SECRET']}"
+            signature = hashlib.sha1(signature_str.encode('utf-8')).hexdigest()
+
+            return cloudinary.utils.cloudinary_url(
+                public_id,
+                resource_type=resource_type,
+                secure=True,
+                sign_url=True,
+                api_key=current_app.config['CLOUDINARY_API_KEY'],
+                signature=signature
+            )[0]
+
+        except Exception as e:
+            logging.error(f"Error generating signed URL: {str(e)}")
             return None
