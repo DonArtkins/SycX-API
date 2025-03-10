@@ -79,7 +79,7 @@ class Summarize(Resource):
 
                 response_data = {
                     'status': 'success',
-                    'pdf_url': pdf_url,
+                    'pdf_url': pdf_url.get('signed_url') if isinstance(pdf_url, dict) else pdf_url,
                     'title': result['title'],
                     'summary_length': len(result['summary'].split()),
                     'user_id': user_id
