@@ -179,13 +179,15 @@ class PDFGenerator:
                 # First attempt
                 response = self._upload_to_cloudinary(output_path, safe_title, unique_id)
                 if response:
-                    return response['secure_url']
+                    # Return the signed URL instead of secure_url
+                    return response['signed_url']
 
                 # Retry with different parameters if first attempt failed
                 logging.warning("First Cloudinary upload attempt failed. Retrying with modified parameters...")
                 response = self._upload_to_cloudinary(output_path, f"summary_{unique_id}", unique_id, retry=True)
                 if response:
-                    return response['secure_url']
+                    # Return the signed URL instead of secure_url
+                    return response['signed_url']
 
                 return None
             except Exception as e:
@@ -239,7 +241,7 @@ class PDFGenerator:
         try:
             # Generate signature
             timestamp = str(int(time.time()))
-            signature_str = f"public_id={public_id}&timestamp={timestamp}{current_app.config['CLOUDINARY_API_SECRET']}"
+            signature_str = f"public_id={public_id}×tamp={timestamp}{current_app.config['CLOUDINARY_API_SECRET']}"
             signature = hashlib.sha1(signature_str.encode('utf-8')).hexdigest()
 
             return cloudinary.utils.cloudinary_url(

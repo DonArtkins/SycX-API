@@ -71,15 +71,16 @@ class Summarize(Resource):
                 pdf_url = self.pdf_generator.create_pdf(
                     summary_content=result['summary'],
                     display_format=result['display_format'],
-                    title=result['title'] 
+                    title=result['title']
                 )
 
                 if not pdf_url:
                     return {'error': 'Failed to generate or upload PDF'}, 500
 
+                # Correctly use the returned pdf_url (which should be the signed URL)
                 response_data = {
                     'status': 'success',
-                    'pdf_url': pdf_url.get('signed_url') if isinstance(pdf_url, dict) else pdf_url,
+                    'pdf_url': pdf_url,  # Directly use pdf_url, it's already the signed URL
                     'title': result['title'],
                     'summary_length': len(result['summary'].split()),
                     'user_id': user_id
