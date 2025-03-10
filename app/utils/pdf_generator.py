@@ -196,23 +196,19 @@ class PDFGenerator:
 
     # In pdf_generator.py, modify the _upload_to_cloudinary method:
     def _upload_to_cloudinary(self, file_path, title, unique_id, retry=False):
-        try:
-            options = {
-                "folder": "SycX Files",
-                "public_id": f"{title}_{unique_id}",
-                "resource_type": "auto",
-                "overwrite": True,
-                "context": {"author": "SycX AI"}  # Add author in context
-            }
+    try:
+        options = {
+            "folder": "SycX Files",
+            "public_id": f"{title}_{unique_id}",
+            "resource_type": "raw",  # Changed from "auto" to "raw"
+            "overwrite": True,
+            "type": "upload",  # Explicitly set type
+            "access_mode": "public",  # Ensure public access
+            "context": {"author": "SycX AI"}
+        }
 
-            # Remove problematic retry parameters
-            response = cloudinary.uploader.upload(file_path, **options)
-
-            if 'secure_url' not in response:
-                logging.error(f"Cloudinary response: {response}")
-                return None
-
-            return response
-        except Exception as e:
-            logging.error(f"Cloudinary upload error: {str(e)}")
-            return None
+        response = cloudinary.uploader.upload(file_path, **options)
+        return response
+    except Exception as e:
+        logging.error(f"Cloudinary upload error: {str(e)}")
+        return None
