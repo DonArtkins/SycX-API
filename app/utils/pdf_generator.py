@@ -207,7 +207,6 @@ class PDFGenerator:
             signature = hashlib.sha1(signature_str.encode('utf-8')).hexdigest()
 
             options = {
-                "folder": "SycX Files",
                 "public_id": public_id,
                 "resource_type": "auto",
                 "overwrite": True,
