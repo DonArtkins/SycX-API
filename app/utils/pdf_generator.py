@@ -235,11 +235,11 @@ class PDFGenerator:
             logging.error(f"Cloudinary upload error: {str(e)}")
             return None
 
-    # Add new method to generate signed URLs
     def _generate_signed_url(self, public_id, resource_type):
         try:
             # Generate signature
-            signature_str = f"public_id={public_id}{current_app.config['CLOUDINARY_API_SECRET']}"
+            timestamp = str(int(time.time()))
+            signature_str = f"public_id={public_id}&timestamp={timestamp}{current_app.config['CLOUDINARY_API_SECRET']}"
             signature = hashlib.sha1(signature_str.encode('utf-8')).hexdigest()
 
             return cloudinary.utils.cloudinary_url(
@@ -248,7 +248,8 @@ class PDFGenerator:
                 secure=True,
                 sign_url=True,
                 api_key=current_app.config['CLOUDINARY_API_KEY'],
-                signature=signature
+                signature=signature,
+                timestamp=timestamp
             )[0]
 
         except Exception as e:
