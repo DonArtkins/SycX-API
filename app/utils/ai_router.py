@@ -92,7 +92,7 @@ class AIRouter:
 
     def _generate_with_huggingface(self, prompt: str, key: str) -> str:
         # Using mistralai/Mistral-7B-Instruct-v0.2 as a reliable standard model
-        API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+        API_URL = "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.2"
         headers = {"Authorization": f"Bearer {key}"}
         
         payload = {
