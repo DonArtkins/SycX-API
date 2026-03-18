@@ -18,6 +18,7 @@ lib/
 lib64/
 venv/
 .env
+.env.example
 
 # IDE
 .idea/

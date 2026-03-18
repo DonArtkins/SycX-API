@@ -25,10 +25,8 @@ python-json-logger
 requests
 python-multipart
 six
-spacy
 cloudinary
 flask-restful
 flask-cors
 openai
 google-generativeai
-uuid
