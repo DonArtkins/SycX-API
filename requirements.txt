@@ -28,4 +28,4 @@ cloudinary
 flask-restful
 flask-cors
 openai
-google-generativeai
+google-genai
