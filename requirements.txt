@@ -2,7 +2,6 @@ Flask
 Flask-Limiter
 python-dotenv
 transformers
-torch
 nltk
 numpy
 pdfminer.six
