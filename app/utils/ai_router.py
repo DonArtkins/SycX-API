@@ -1,5 +1,4 @@
 import logging
-import requests
 from flask import current_app
 from google import genai
 from openai import OpenAI
@@ -14,18 +13,27 @@ class AIRouter:
         pass
 
     # ---------------------------------------------------------------------------
-    # HuggingFace migrated to:  https://router.huggingface.co/v1  (OpenAI-compat)
-    # Model IDs: "org/model-name:provider"  where ":hf-inference" = HF free tier.
-    # Tried in order; first success wins.
+    # HuggingFace Inference Router — OpenAI-compatible endpoint:
+    #   https://router.huggingface.co/v1
+    #
+    # Model suffix rules (as of 2025):
+    #   :fastest  — router auto-picks the highest-throughput provider (free tier OK)
+    #   :auto     — first available provider in user's preference order
+    #   :cerebras / :together / :sambanova etc — force a specific backend
+    #
+    # NOTE: ":hf-inference" is now CPU-only (BERT/GPT-2 era models) and does NOT
+    # support modern instruct LLMs.  Use :fastest for free-tier chat completions.
+    #
+    # Tried in order; first successful response wins.
     # ---------------------------------------------------------------------------
     HF_ROUTER_BASE = "https://router.huggingface.co/v1"
 
     HF_MODELS = [
-        "google/gemma-2-2b-it:hf-inference",              # 2 B — fast, very available
-        "Qwen/Qwen2.5-7B-Instruct:hf-inference",          # 7 B instruct
-        "meta-llama/Llama-3.2-3B-Instruct:hf-inference",  # 3 B llama
-        "mistralai/Mistral-7B-Instruct-v0.3:hf-inference", # classic mistral
-        "HuggingFaceH4/zephyr-7b-beta:hf-inference",      # zephyr fallback
+        "meta-llama/Llama-3.1-8B-Instruct:fastest",        # llama 8B — very widely available
+        "Qwen/Qwen2.5-7B-Instruct:fastest",                 # Qwen 7B instruct
+        "mistralai/Mistral-7B-Instruct-v0.3:fastest",       # Mistral 7B
+        "microsoft/Phi-3.5-mini-instruct:fastest",          # Phi 3.5 mini — lightweight
+        "google/gemma-2-2b-it:fastest",                     # Gemma 2B — smallest fallback
     ]
 
     # ------------------------------------------------------------------
@@ -117,11 +125,14 @@ class AIRouter:
 
     def _generate_with_huggingface(self, prompt: str, key: str) -> str:
         """
-        Uses the HuggingFace Inference Router — OpenAI-compatible API.
-        https://router.huggingface.co/v1
+        Uses the HuggingFace Inference Router (OpenAI-compatible).
+          Base URL : https://router.huggingface.co/v1
+          Auth     : Bearer <HF token>
+          Model fmt: "org/model-name:provider"
+                     ":fastest" lets the router pick the best available
+                     free-tier backend automatically.
 
-        Tries each model in HF_MODELS until one succeeds.
-        The ':hf-inference' suffix routes to HF's own free serverless inference.
+        Iterates through HF_MODELS until one succeeds.
         """
         client = OpenAI(
             base_url=self.HF_ROUTER_BASE,
